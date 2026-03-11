@@ -1,0 +1,9 @@
+{
+  "id": "microsoft-graph",
+  "channels": ["outlook"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

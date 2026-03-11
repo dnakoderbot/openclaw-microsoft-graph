@@ -1,0 +1,29 @@
+{
+  "name": "microsoft-graph",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenClaw Microsoft Graph channel plugin",
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "channel": {
+      "id": "outlook",
+      "label": "Outlook",
+      "selectionLabel": "Outlook (Microsoft Graph)",
+      "docsPath": "/channels/outlook",
+      "docsLabel": "outlook",
+      "blurb": "Microsoft 365 email via Microsoft Graph.",
+      "aliases": [
+        "microsoft-graph",
+        "office365"
+      ],
+      "order": 58
+    },
+    "install": {
+      "localPath": "projects/openclaw-microsoft-graph",
+      "defaultChoice": "local"
+    }
+  }
+}
