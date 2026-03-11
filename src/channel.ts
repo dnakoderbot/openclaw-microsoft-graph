@@ -20,6 +20,15 @@ const meta = {
   order: 58,
 };
 
+function waitForAbort(signal: AbortSignal): Promise<void> {
+  if (signal.aborted) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    signal.addEventListener("abort", () => resolve(), { once: true });
+  });
+}
+
 function defaultSubject(text: string): string {
   const firstLine = text.split("\n").find((line) => line.trim());
   if (!firstLine) {
@@ -150,17 +159,14 @@ export const outlookPlugin: ChannelPlugin<ResolvedOutlookAccount> = {
         lastStartAt: Date.now(),
         lastError: null,
       });
-      return {
-        stop: async () => {
-          stopMailSubscription(ctx.accountId);
-          ctx.setStatus({
-            ...ctx.getStatus(),
-            running: false,
-            connected: false,
-            lastStopAt: Date.now(),
-          });
-        },
-      };
+      await waitForAbort(ctx.abortSignal);
+      stopMailSubscription(ctx.accountId);
+      ctx.setStatus({
+        ...ctx.getStatus(),
+        running: false,
+        connected: false,
+        lastStopAt: Date.now(),
+      });
     },
   },
 };

@@ -5,6 +5,7 @@ export type MicrosoftGraphTokenPayload = {
   refresh_token?: string;
   expires_in?: number;
   expires_on?: number | string;
+  obtained_at?: number;
   scope?: string;
   token_type?: string;
   id_token_claims?: {

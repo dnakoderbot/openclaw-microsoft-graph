@@ -2,8 +2,9 @@ import type {
   GraphMessage,
   GraphSubscription,
   ResolvedOutlookAccount,
+  MicrosoftGraphTokenPayload,
 } from "./types.js";
-import { loadTokenPayload } from "./auth.js";
+import { loadTokenPayload, refreshTokenPayload } from "./auth.js";
 
 const GRAPH_ROOT = "https://graph.microsoft.com/v1.0";
 
@@ -13,12 +14,27 @@ export async function graphFetch(
   init?: RequestInit,
 ): Promise<Response> {
   const token = await loadTokenPayload(account);
+  return graphFetchWithToken(account, token, path, init, true);
+}
+
+async function graphFetchWithToken(
+  account: ResolvedOutlookAccount,
+  token: MicrosoftGraphTokenPayload,
+  path: string,
+  init: RequestInit | undefined,
+  retryOnUnauthorized: boolean,
+): Promise<Response> {
   const headers = new Headers(init?.headers ?? {});
   headers.set("Authorization", `Bearer ${token.access_token}`);
   if (!headers.has("Content-Type") && init?.body) {
     headers.set("Content-Type", "application/json");
   }
-  return fetch(`${GRAPH_ROOT}${path}`, { ...init, headers });
+  const response = await fetch(`${GRAPH_ROOT}${path}`, { ...init, headers });
+  if (response.status === 401 && retryOnUnauthorized) {
+    const refreshed = await refreshTokenPayload(account, token);
+    return graphFetchWithToken(account, refreshed, path, init, false);
+  }
+  return response;
 }
 
 export async function fetchMe(account: ResolvedOutlookAccount): Promise<Record<string, unknown>> {

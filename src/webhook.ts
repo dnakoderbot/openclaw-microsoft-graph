@@ -33,7 +33,11 @@ async function readJsonBody(req: IncomingMessage): Promise<GraphNotificationEnve
   for await (const chunk of req) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as GraphNotificationEnvelope;
+  const raw = Buffer.concat(chunks).toString("utf8").trim();
+  if (!raw) {
+    return {};
+  }
+  return JSON.parse(raw) as GraphNotificationEnvelope;
 }
 
 export async function handleOutlookWebhook(
@@ -41,7 +45,7 @@ export async function handleOutlookWebhook(
   res: ServerResponse,
 ): Promise<boolean> {
   const url = new URL(req.url ?? "/", "http://localhost");
-  if (req.method === "GET" && url.searchParams.has("validationToken")) {
+  if (url.searchParams.has("validationToken")) {
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/plain");
     res.end(url.searchParams.get("validationToken") ?? "");

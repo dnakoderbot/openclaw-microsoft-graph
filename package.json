@@ -25,5 +25,8 @@
       "localPath": "projects/openclaw-microsoft-graph",
       "defaultChoice": "local"
     }
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }
