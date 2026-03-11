@@ -28,6 +28,9 @@ export type OutlookAccountConfig = {
   webhookPath?: string;
   attachmentDownloadDir?: string;
   attachmentMaxBytes?: number;
+  driveWorkspacePath?: string;
+  mirrorInboundAttachmentsToDrive?: boolean;
+  driveSimpleUploadMaxBytes?: number;
 };
 
 export type ResolvedOutlookAccount = {
@@ -45,6 +48,9 @@ export type ResolvedOutlookAccount = {
   subscriptionRenewBufferMs?: number;
   attachmentDownloadDir?: string;
   attachmentMaxBytes?: number;
+  driveWorkspacePath?: string;
+  mirrorInboundAttachmentsToDrive?: boolean;
+  driveSimpleUploadMaxBytes?: number;
 };
 
 export type GraphEmailAddress = {

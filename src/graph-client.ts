@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import type {
   GraphFileAttachment,
   GraphMessage,
@@ -172,4 +174,43 @@ export async function renewSubscription(params: {
     throw new Error(`Graph renew subscription failed: HTTP ${response.status} ${body}`);
   }
   return (await response.json()) as GraphSubscription;
+}
+
+function normalizeDrivePath(input: string): string {
+  const normalized = input.replace(/\\/g, "/").replace(/\/+/g, "/").trim();
+  if (!normalized) {
+    return "/OpenClaw";
+  }
+  return normalized.startsWith("/") ? normalized : `/${normalized}`;
+}
+
+export async function uploadFileToDrive(params: {
+  account: ResolvedOutlookAccount;
+  localPath: string;
+  remotePath: string;
+}): Promise<string> {
+  const remotePath = normalizeDrivePath(params.remotePath);
+  const content = await readFile(params.localPath);
+  if (content.byteLength > (params.account.driveSimpleUploadMaxBytes ?? 0)) {
+    throw new Error(
+      `Drive upload skipped: ${params.localPath} is ${content.byteLength} bytes, over simple upload limit ${params.account.driveSimpleUploadMaxBytes}`,
+    );
+  }
+  const response = await graphFetch(
+    params.account,
+    `/me/drive/root:${remotePath}:/content`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/octet-stream",
+      },
+      body: content,
+    },
+  );
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Graph drive upload failed: HTTP ${response.status} ${body}`);
+  }
+  const payload = (await response.json()) as { webUrl?: string; parentReference?: { path?: string }; name?: string };
+  return payload.webUrl ?? `${payload.parentReference?.path ?? ""}/${payload.name ?? ""}`;
 }

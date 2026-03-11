@@ -8,6 +8,8 @@ const DEFAULT_WEBHOOK_PATH = "/plugins/outlook/webhook";
 const DEFAULT_SUBSCRIPTION_RENEW_BUFFER_MS = 15 * 60_000;
 const DEFAULT_ATTACHMENT_DOWNLOAD_DIR = "/home/koderbot/.openclaw/outlook-attachments";
 const DEFAULT_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+const DEFAULT_DRIVE_WORKSPACE_PATH = "/OpenClaw";
+const DEFAULT_DRIVE_SIMPLE_UPLOAD_MAX_BYTES = 4 * 1024 * 1024;
 
 function rawOutlookSection(cfg: OpenClawConfig): Record<string, unknown> {
   return ((cfg as Record<string, unknown>).channels as Record<string, unknown> | undefined)?.outlook as
@@ -70,6 +72,18 @@ export function resolveOutlookAccount(
       typeof account.attachmentMaxBytes === "number"
         ? account.attachmentMaxBytes
         : DEFAULT_ATTACHMENT_MAX_BYTES,
+    driveWorkspacePath:
+      typeof (account as Record<string, unknown>).driveWorkspacePath === "string"
+        ? ((account as Record<string, unknown>).driveWorkspacePath as string)
+        : DEFAULT_DRIVE_WORKSPACE_PATH,
+    mirrorInboundAttachmentsToDrive:
+      typeof (account as Record<string, unknown>).mirrorInboundAttachmentsToDrive === "boolean"
+        ? ((account as Record<string, unknown>).mirrorInboundAttachmentsToDrive as boolean)
+        : true,
+    driveSimpleUploadMaxBytes:
+      typeof (account as Record<string, unknown>).driveSimpleUploadMaxBytes === "number"
+        ? ((account as Record<string, unknown>).driveSimpleUploadMaxBytes as number)
+        : DEFAULT_DRIVE_SIMPLE_UPLOAD_MAX_BYTES,
   };
 }
 
