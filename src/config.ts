@@ -6,6 +6,8 @@ const DEFAULT_TOKEN_FILE = "/home/koderbot/.microsoft/tokens/msal_auth_result.js
 const DEFAULT_POLLING_INTERVAL_MS = 60_000;
 const DEFAULT_WEBHOOK_PATH = "/plugins/outlook/webhook";
 const DEFAULT_SUBSCRIPTION_RENEW_BUFFER_MS = 15 * 60_000;
+const DEFAULT_ATTACHMENT_DOWNLOAD_DIR = "/home/koderbot/.openclaw/outlook-attachments";
+const DEFAULT_ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 
 function rawOutlookSection(cfg: OpenClawConfig): Record<string, unknown> {
   return ((cfg as Record<string, unknown>).channels as Record<string, unknown> | undefined)?.outlook as
@@ -60,6 +62,14 @@ export function resolveOutlookAccount(
       typeof (account as Record<string, unknown>).subscriptionRenewBufferMs === "number"
         ? ((account as Record<string, unknown>).subscriptionRenewBufferMs as number)
         : DEFAULT_SUBSCRIPTION_RENEW_BUFFER_MS,
+    attachmentDownloadDir:
+      typeof account.attachmentDownloadDir === "string"
+        ? account.attachmentDownloadDir
+        : DEFAULT_ATTACHMENT_DOWNLOAD_DIR,
+    attachmentMaxBytes:
+      typeof account.attachmentMaxBytes === "number"
+        ? account.attachmentMaxBytes
+        : DEFAULT_ATTACHMENT_MAX_BYTES,
   };
 }
 

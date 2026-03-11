@@ -1,10 +1,13 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
 import {
   createReplyPrefixOptions,
   resolveInboundRouteEnvelopeBuilderWithRuntime,
 } from "openclaw/plugin-sdk/compat";
 import type { OpenClawConfig, PluginRuntime } from "openclaw/plugin-sdk/core";
 
-import { fetchMessage, replyToMessage, sendMail } from "./graph-client.js";
+import { fetchFileAttachments, fetchMessage, replyToMessage, sendMail } from "./graph-client.js";
 import { resolveOutlookAccount } from "./config.js";
 import type { GraphMessage, ResolvedOutlookAccount } from "./types.js";
 
@@ -30,6 +33,71 @@ function stripHtml(input?: string): string {
   return (input ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function sanitizeFilename(input: string): string {
+  return input.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 120) || "attachment";
+}
+
+async function materializeAttachments(params: {
+  account: ResolvedOutlookAccount;
+  message: GraphMessage;
+}): Promise<string[]> {
+  const { account, message } = params;
+  if (!message.hasAttachments) {
+    return [];
+  }
+  const attachments = await fetchFileAttachments(account, message.id);
+  if (!attachments.length) {
+    return [];
+  }
+
+  const targetDir = path.join(account.attachmentDownloadDir ?? "/tmp", sanitizeFilename(message.id));
+  await mkdir(targetDir, { recursive: true });
+
+  const saved: string[] = [];
+  for (const attachment of attachments) {
+    if (attachment.isInline) {
+      continue;
+    }
+    const size = attachment.size ?? 0;
+    if (size > (account.attachmentMaxBytes ?? 0)) {
+      saved.push(
+        `${attachment.name ?? "unnamed"} (skipped: ${size} bytes exceeds limit ${account.attachmentMaxBytes})`,
+      );
+      continue;
+    }
+    if (!attachment.contentBytes) {
+      saved.push(`${attachment.name ?? "unnamed"} (metadata only; no contentBytes returned)`);
+      continue;
+    }
+    const fileName = sanitizeFilename(attachment.name ?? `attachment-${saved.length + 1}`);
+    const fullPath = path.join(targetDir, fileName);
+    await writeFile(fullPath, Buffer.from(attachment.contentBytes, "base64"));
+    saved.push(`${attachment.name ?? fileName} -> ${fullPath}`);
+  }
+
+  return saved;
+}
+
+function buildInboundBody(params: {
+  message: GraphMessage;
+  rawBody: string;
+  savedAttachments: string[];
+}): string {
+  const lines = [params.rawBody.trim()];
+  if (params.savedAttachments.length) {
+    lines.push("");
+    lines.push("Attachments:");
+    for (const item of params.savedAttachments) {
+      lines.push(`- ${item}`);
+    }
+  }
+  if (params.message.webLink) {
+    lines.push("");
+    lines.push(`Outlook link: ${params.message.webLink}`);
+  }
+  return lines.filter(Boolean).join("\n");
+}
+
 export async function processIncomingMessage(params: {
   runtime: PluginRuntime;
   cfg: OpenClawConfig;
@@ -51,6 +119,12 @@ export async function processIncomingMessage(params: {
   }
 
   const rawBody = stripHtml(message.body?.content) || message.bodyPreview || message.subject || "";
+  const savedAttachments = await materializeAttachments({ account, message });
+  const bodyForAgent = buildInboundBody({
+    message,
+    rawBody,
+    savedAttachments,
+  });
   const conversationId = message.conversationId || senderAddress.toLowerCase();
   const { route, buildEnvelope } = resolveInboundRouteEnvelopeBuilderWithRuntime({
     cfg,
@@ -68,14 +142,14 @@ export async function processIncomingMessage(params: {
     channel: "Outlook",
     from: fromLabel,
     timestamp: message.receivedDateTime ? Date.parse(message.receivedDateTime) : undefined,
-    body: rawBody,
+    body: bodyForAgent,
   });
 
   const ctxPayload = runtime.channel.reply.finalizeInboundContext({
     Body: body,
-    BodyForAgent: rawBody,
-    RawBody: rawBody,
-    CommandBody: rawBody,
+    BodyForAgent: bodyForAgent,
+    RawBody: bodyForAgent,
+    CommandBody: bodyForAgent,
     From: `outlook:${senderAddress.toLowerCase()}`,
     To: `outlook:${account.defaultTo ?? "me"}`,
     SessionKey: route.sessionKey,

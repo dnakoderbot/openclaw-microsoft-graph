@@ -1,4 +1,5 @@
 import type {
+  GraphFileAttachment,
   GraphMessage,
   GraphSubscription,
   ResolvedOutlookAccount,
@@ -100,13 +101,33 @@ export async function fetchMessage(
 ): Promise<GraphMessage> {
   const response = await graphFetch(
     account,
-    `/me/messages/${encodeURIComponent(messageId)}?$select=id,conversationId,subject,bodyPreview,receivedDateTime,webLink,from,sender,replyTo,body`,
+    `/me/messages/${encodeURIComponent(messageId)}?$select=id,conversationId,subject,bodyPreview,receivedDateTime,webLink,from,sender,replyTo,body,hasAttachments`,
   );
   if (!response.ok) {
     const body = await response.text();
     throw new Error(`Graph fetch message failed: HTTP ${response.status} ${body}`);
   }
   return (await response.json()) as GraphMessage;
+}
+
+export async function fetchFileAttachments(
+  account: ResolvedOutlookAccount,
+  messageId: string,
+): Promise<GraphFileAttachment[]> {
+  const response = await graphFetch(
+    account,
+    `/me/messages/${encodeURIComponent(messageId)}/attachments?$select=id,name,contentType,size,isInline,contentBytes`,
+  );
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Graph fetch attachments failed: HTTP ${response.status} ${body}`);
+  }
+  const payload = (await response.json()) as { value?: GraphFileAttachment[] };
+  return (payload.value ?? []).filter(
+    (attachment) =>
+      attachment["@odata.type"] === undefined ||
+      attachment["@odata.type"] === "#microsoft.graph.fileAttachment",
+  );
 }
 
 export async function createMailSubscription(

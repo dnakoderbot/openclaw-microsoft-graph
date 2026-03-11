@@ -26,6 +26,8 @@ export type OutlookAccountConfig = {
   pollingIntervalMs?: number;
   webhookPublicBaseUrl?: string;
   webhookPath?: string;
+  attachmentDownloadDir?: string;
+  attachmentMaxBytes?: number;
 };
 
 export type ResolvedOutlookAccount = {
@@ -41,6 +43,8 @@ export type ResolvedOutlookAccount = {
   webhookPath?: string;
   watchedFolderId?: string;
   subscriptionRenewBufferMs?: number;
+  attachmentDownloadDir?: string;
+  attachmentMaxBytes?: number;
 };
 
 export type GraphEmailAddress = {
@@ -68,6 +72,7 @@ export type GraphMessage = {
     contentType?: string;
     content?: string;
   };
+  hasAttachments?: boolean;
 };
 
 export type GraphSubscription = {
@@ -75,4 +80,14 @@ export type GraphSubscription = {
   resource: string;
   expirationDateTime: string;
   clientState?: string;
+};
+
+export type GraphFileAttachment = {
+  id?: string;
+  name?: string;
+  contentType?: string;
+  size?: number;
+  isInline?: boolean;
+  contentBytes?: string;
+  "@odata.type"?: string;
 };
